@@ -10,7 +10,7 @@ const initialBoardState = {
     viewport: { x: 0, y: 0, zoom: 1 },
     mode: CONFIG.MODES.SELECT,
     brush: { color: CONFIG.COLORS_BRUSH[0], size: 4 },
-    selectionId: null,
+    selectionIds: [],   // Array of selected node/path IDs (multi-select)
     isDarkTheme: false,
     showGrid: true,
 };
@@ -24,16 +24,25 @@ const initialUndoableState = {
 
 // Which actions should trigger a save to the history stack
 const isUndoableAction = (type) => {
-    return ['ADD_NODE', 'UPDATE_NODE', 'DELETE_NODE', 'ADD_PATH', 'DELETE_PATH', 'SET_THEME'].includes(type);
+    return ['ADD_NODE', 'UPDATE_NODE', 'DELETE_NODE', 'ADD_PATH', 'DELETE_PATH', 'SET_THEME', 'MOVE_SELECTION'].includes(type);
 };
 
 function boardReducer(state, action) {
     if (action.type === 'HYDRATE') {
-        return {
-            past: [],
-            present: { ...initialBoardState, ...action.payload },
-            future: []
-        };
+        const hydratedPresent = { ...initialBoardState, ...action.payload };
+        // Migrate old selectionId → selectionIds
+        if (!hydratedPresent.selectionIds) {
+            hydratedPresent.selectionIds = hydratedPresent.selectionId ? [hydratedPresent.selectionId] : [];
+        }
+        delete hydratedPresent.selectionId;
+        // Normalise path points: old saves used {x,y} objects, new code uses [x,y] arrays
+        if (hydratedPresent.paths) {
+            hydratedPresent.paths = hydratedPresent.paths.map(p => ({
+                ...p,
+                points: p.points.map(pt => Array.isArray(pt) ? pt : [pt.x, pt.y])
+            }));
+        }
+        return { past: [], present: hydratedPresent, future: [] };
     }
 
     if (action.type === 'UNDO') {
@@ -64,13 +73,18 @@ function boardReducer(state, action) {
 
     switch (action.type) {
         case 'SET_MODE':
-            newPresent = { ...present, mode: action.payload, selectionId: null };
+            newPresent = { ...present, mode: action.payload, selectionIds: [] };
             break;
         case 'SET_VIEWPORT':
             newPresent = { ...present, viewport: action.payload };
             break;
         case 'SET_SELECTION':
-            newPresent = { ...present, selectionId: action.payload };
+            // payload: single id or null
+            newPresent = { ...present, selectionIds: action.payload ? [action.payload] : [] };
+            break;
+        case 'SET_MULTI_SELECTION':
+            // payload: array of ids
+            newPresent = { ...present, selectionIds: action.payload || [] };
             break;
         case 'SET_BRUSH':
             newPresent = { ...present, brush: { ...present.brush, ...action.payload } };
@@ -81,13 +95,13 @@ function boardReducer(state, action) {
         
         // Nodes
         case 'ADD_NODE':
-            newPresent = { ...present, nodes: [...present.nodes, action.payload], selectionId: action.payload.id, mode: CONFIG.MODES.SELECT };
+            newPresent = { ...present, nodes: [...present.nodes, action.payload], selectionIds: [action.payload.id], mode: CONFIG.MODES.SELECT };
             break;
         case 'UPDATE_NODE':
             newPresent = { ...present, nodes: present.nodes.map(n => n.id === action.id ? { ...n, ...action.payload } : n) };
             break;
         case 'DELETE_NODE':
-            newPresent = { ...present, nodes: present.nodes.filter(n => n.id !== action.id), selectionId: present.selectionId === action.id ? null : present.selectionId };
+            newPresent = { ...present, nodes: present.nodes.filter(n => n.id !== action.id), selectionIds: present.selectionIds.filter(id => id !== action.id) };
             break;
         
         // Paths
@@ -95,8 +109,31 @@ function boardReducer(state, action) {
             newPresent = { ...present, paths: [...present.paths, action.payload] };
             break;
         case 'DELETE_PATH':
-            newPresent = { ...present, paths: present.paths.filter(p => p.id !== action.id) };
+            newPresent = { ...present, paths: present.paths.filter(p => p.id !== action.id), selectionIds: present.selectionIds.filter(id => id !== action.id) };
             break;
+
+        // Move all currently selected nodes + paths by dx, dy (in board coordinates)
+        case 'MOVE_SELECTION': {
+            const { dx, dy } = action.payload;
+            const ids = new Set(present.selectionIds);
+            const newNodes = present.nodes.map(n =>
+                ids.has(n.id) ? { ...n, x: n.x + dx, y: n.y + dy } : n
+            );
+            const newPaths = present.paths.map(p => {
+                if (!ids.has(p.id)) return p;
+                return {
+                    ...p,
+                    // Handle both [x,y] arrays and legacy {x,y} objects
+                    points: p.points.map(pt => {
+                        const px = Array.isArray(pt) ? pt[0] : pt.x;
+                        const py = Array.isArray(pt) ? pt[1] : pt.y;
+                        return [px + dx, py + dy];
+                    })
+                };
+            });
+            newPresent = { ...present, nodes: newNodes, paths: newPaths };
+            break;
+        }
             
         default:
             return state;
@@ -172,16 +209,19 @@ export function BoardProvider({ children }) {
                 dispatch({ type: 'REDO' });
             } else if (e.key === 'Delete' || e.key === 'Backspace') {
                 e.preventDefault();
-                // Delete the currently selected node if any
-                const currentSelection = state.present.selectionId;
-                if (currentSelection) {
-                    dispatch({ type: 'DELETE_NODE', id: currentSelection });
-                }
+                const currentIds = state.present.selectionIds;
+                // Delete all selected nodes
+                currentIds.forEach(id => {
+                    const isNode = state.present.nodes.some(n => n.id === id);
+                    const isPath = state.present.paths.some(p => p.id === id);
+                    if (isNode) dispatch({ type: 'DELETE_NODE', id });
+                    if (isPath) dispatch({ type: 'DELETE_PATH', id });
+                });
             }
         };
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [state.present.selectionId]);
+    }, [state.present.selectionIds, state.present.nodes, state.present.paths]);
 
     if (!isHydrated) {
         return (

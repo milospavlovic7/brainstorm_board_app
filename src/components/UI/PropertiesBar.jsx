@@ -4,12 +4,16 @@ import { CONFIG, StorageService } from '../../services/StorageService';
 import { Trash2, Save } from 'lucide-react';
 
 export function PropertiesBar() {
-    const { mode, selectionId, nodes, brush } = useContext(BoardContext);
+    const { mode, selectionIds, nodes, paths, brush } = useContext(BoardContext);
     const dispatchEnhanced = useContext(BoardDispatch);
     const dispatch = dispatchEnhanced;
     const [savedFeedback, setSavedFeedback] = useState(false);
 
+    // Single-selection helpers (null when multi-select)
+    const selectionId = selectionIds && selectionIds.length === 1 ? selectionIds[0] : null;
     const selectedNode = useMemo(() => nodes.find(n => n.id === selectionId), [nodes, selectionId]);
+    const selectedPath = useMemo(() => paths.find(p => p.id === selectionId), [paths, selectionId]);
+    const isMultiSelect = selectionIds && selectionIds.length > 1;
 
     const handleColorClick = (c) => {
         if (selectedNode) dispatch({ type: 'UPDATE_NODE', id: selectionId, payload: { color: c }});
@@ -17,7 +21,15 @@ export function PropertiesBar() {
     };
 
     const handleDelete = () => {
-        if (selectionId) dispatch({ type: 'DELETE_NODE', id: selectionId });
+        if (isMultiSelect) {
+            selectionIds.forEach(id => {
+                if (nodes.some(n => n.id === id)) dispatch({ type: 'DELETE_NODE', id });
+                else if (paths.some(p => p.id === id)) dispatch({ type: 'DELETE_PATH', id });
+            });
+        } else if (selectionId) {
+            if (selectedNode) dispatch({ type: 'DELETE_NODE', id: selectionId });
+            else if (selectedPath) dispatch({ type: 'DELETE_PATH', id: selectionId });
+        }
     };
 
     const handleSaveDefaults = useCallback(() => {
@@ -39,9 +51,18 @@ export function PropertiesBar() {
     let innerContent = null;
 
     if (mode === CONFIG.MODES.SELECT || mode === CONFIG.MODES.TEXT) {
-        if (!selectedNode) return null; // Nothing to show if nothing selected in select mode
-
-        if (selectedNode.type === 'note') {
+        if (isMultiSelect) {
+            // Multi-select: show count + delete all
+            innerContent = (
+                <>
+                    <span className="prop-label">{selectionIds.length} items selected</span>
+                    <div className="divider-v" />
+                    <button className="btn-icon is-danger" title="Delete Selected" onClick={handleDelete}>
+                        <Trash2 size={16} /> Delete All
+                    </button>
+                </>
+            );
+        } else if (selectedNode && selectedNode.type === 'note') {
             innerContent = (
                 <>
                     {CONFIG.COLORS_NOTE.map(c => (
@@ -109,11 +130,11 @@ export function PropertiesBar() {
                     <button className="btn-icon is-danger" title="Delete Note" onClick={handleDelete}><Trash2 size={16} /></button>
                 </>
             );
-        } else if (selectedNode.type === 'image') {
+        } else if (selectedNode && selectedNode.type === 'image') {
             innerContent = (
                 <button className="btn-icon is-danger" title="Delete Image" onClick={handleDelete}><Trash2 size={18} /> Delete Image</button>
             );
-        } else if (selectedNode.type === 'text') {
+        } else if (selectedNode && selectedNode.type === 'text') {
             innerContent = (
                 <>
                     {CONFIG.COLORS_TEXT.map(c => (
@@ -143,6 +164,14 @@ export function PropertiesBar() {
                     <button className="btn-icon is-danger" title="Delete Text" onClick={handleDelete}><Trash2 size={18} /></button>
                 </>
             );
+        } else if (selectedPath) {
+            innerContent = (
+                <button className="btn-icon is-danger" title="Delete Drawing" onClick={handleDelete}>
+                    <Trash2 size={18} /> Delete Drawing
+                </button>
+            );
+        } else {
+            return null;
         }
     } else if (mode === CONFIG.MODES.DRAW) {
         innerContent = (

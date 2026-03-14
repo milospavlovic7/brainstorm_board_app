@@ -155,6 +155,23 @@ body {
 .path-stroke { pointer-events: auto; }
 .path-eraser-mode { cursor: crosshair; }
 .path-eraser-mode:hover { opacity: 0.5; }
+.path-selectable { cursor: grab; }
+.path-selected { filter: drop-shadow(0 0 6px var(--color-primary)); opacity: 0.85; }
+
+/* Box Selection Rectangle */
+.selection-rect {
+    position: absolute;
+    pointer-events: none;
+    border: 1.5px solid var(--color-primary);
+    background: rgba(59, 130, 246, 0.08);
+    border-radius: 4px;
+    z-index: 999;
+}
+
+/* Multi-selected nodes get a different highlight than single-select */
+.node-base.is-multi-selected {
+    box-shadow: 0 0 0 2px var(--color-primary), 0 4px 12px rgba(59,130,246,0.18);
+}
 
 /* =========================================================================
     UI PANELS & TOOLBARS
