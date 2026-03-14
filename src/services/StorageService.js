@@ -5,7 +5,8 @@ export const CONFIG = {
     COLORS_TEXT: ['#0f172a', '#ef4444', '#3b82f6', '#22c55e', '#eab308', '#ffffff'],
     MODES: { SELECT: 'SELECT', DRAW: 'DRAW', ERASE: 'ERASE', TEXT: 'TEXT' },
     DB_NAME: 'BrainstormProV2DB',
-    DB_STORE: 'projects_v2'
+    DB_STORE: 'projects_v2',
+    DEFAULT_NOTE_KEY: 'bs_pro_v2_note_defaults'
 };
 
 export const generateId = () => Date.now().toString(36) + Math.random().toString(36).substr(2);
@@ -66,5 +67,20 @@ export const StorageService = {
             reader.onerror = reject;
             reader.readAsText(file);
         });
+    },
+    saveNoteDefaults(defaults) {
+        try {
+            localStorage.setItem(CONFIG.DEFAULT_NOTE_KEY, JSON.stringify(defaults));
+        } catch (e) {
+            console.warn('Failed to save note defaults', e);
+        }
+    },
+    loadNoteDefaults() {
+        try {
+            const raw = localStorage.getItem(CONFIG.DEFAULT_NOTE_KEY);
+            return raw ? JSON.parse(raw) : null;
+        } catch (e) {
+            return null;
+        }
     }
 };

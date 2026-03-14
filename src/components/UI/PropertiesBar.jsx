@@ -1,12 +1,13 @@
-import React, { useContext, useMemo } from 'react';
+import React, { useContext, useMemo, useState, useCallback } from 'react';
 import { BoardContext, BoardDispatch } from '../../store/BoardContext';
-import { CONFIG } from '../../services/StorageService';
-import { Trash2 } from 'lucide-react';
+import { CONFIG, StorageService } from '../../services/StorageService';
+import { Trash2, Save } from 'lucide-react';
 
 export function PropertiesBar() {
     const { mode, selectionId, nodes, brush } = useContext(BoardContext);
     const dispatchEnhanced = useContext(BoardDispatch);
     const dispatch = dispatchEnhanced;
+    const [savedFeedback, setSavedFeedback] = useState(false);
 
     const selectedNode = useMemo(() => nodes.find(n => n.id === selectionId), [nodes, selectionId]);
 
@@ -18,6 +19,21 @@ export function PropertiesBar() {
     const handleDelete = () => {
         if (selectionId) dispatch({ type: 'DELETE_NODE', id: selectionId });
     };
+
+    const handleSaveDefaults = useCallback(() => {
+        if (!selectedNode || selectedNode.type !== 'note') return;
+        const defaults = {
+            color: selectedNode.color || CONFIG.COLORS_NOTE[0],
+            font: selectedNode.font || CONFIG.FONTS[0],
+            fontSize: selectedNode.fontSize || 16,
+            fontWeight: selectedNode.fontWeight || 'normal',
+            fontStyle: selectedNode.fontStyle || 'normal',
+            textColor: selectedNode.textColor || '#0f172a'
+        };
+        StorageService.saveNoteDefaults(defaults);
+        setSavedFeedback(true);
+        setTimeout(() => setSavedFeedback(false), 1500);
+    }, [selectedNode]);
 
     // Render logic depends on combination of Mode + Selection
     let innerContent = null;
@@ -79,6 +95,17 @@ export function PropertiesBar() {
                         className="color-picker-input"
                     />
                     <div className="divider-v" />
+                    <button 
+                        className={`btn-icon btn-save-default ${savedFeedback ? 'is-saved' : ''}`}
+                        title="Save current settings as default for new notes"
+                        onClick={handleSaveDefaults}
+                    >
+                        {savedFeedback ? (
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                        ) : (
+                            <Save size={16} />
+                        )}
+                    </button>
                     <button className="btn-icon is-danger" title="Delete Note" onClick={handleDelete}><Trash2 size={16} /></button>
                 </>
             );

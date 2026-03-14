@@ -234,3 +234,17 @@ body {
 /* Custom placeholder for text node */
 .text-input::placeholder { color: rgba(15,23,42,0.3); }
 .dark-theme .text-input::placeholder { color: rgba(255,255,255,0.3); }
+
+/* Save as Default button */
+.btn-save-default {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.btn-save-default.is-saved {
+    color: #16a34a;
+    animation: saveConfirm 0.4s ease;
+}
+@keyframes saveConfirm {
+    0% { transform: scale(1); }
+    40% { transform: scale(1.25); }
+    100% { transform: scale(1); }
+}

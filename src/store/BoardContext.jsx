@@ -153,7 +153,7 @@ export function BoardProvider({ children }) {
         return () => clearTimeout(timer);
     }, [state.present, isHydrated]);
     
-    // Keyboard shortcuts for Undo/Redo
+    // Keyboard shortcuts for Undo/Redo and Delete
     useEffect(() => {
         const handleKeyDown = (e) => {
             // Check if user is typing in an input
@@ -170,11 +170,18 @@ export function BoardProvider({ children }) {
             } else if ((e.ctrlKey || e.metaKey) && e.key === 'y') {
                 e.preventDefault();
                 dispatch({ type: 'REDO' });
+            } else if (e.key === 'Delete' || e.key === 'Backspace') {
+                e.preventDefault();
+                // Delete the currently selected node if any
+                const currentSelection = state.present.selectionId;
+                if (currentSelection) {
+                    dispatch({ type: 'DELETE_NODE', id: currentSelection });
+                }
             }
         };
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
-    }, []);
+    }, [state.present.selectionId]);
 
     if (!isHydrated) {
         return (

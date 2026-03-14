@@ -16,12 +16,20 @@ export function MainMenu() {
 
     const addNote = useCallback(() => {
         const w = 260, h = 220;
-        dispatch({ type: 'ADD_NODE', payload: { 
+        const saved = StorageService.loadNoteDefaults();
+        const noteData = { 
             type: 'note', id: generateId(), 
             x: (-viewport.x + window.innerWidth / 2) / viewport.zoom - w/2, 
             y: (-viewport.y + window.innerHeight / 2) / viewport.zoom - h/2, 
-            w, h, text: '', color: CONFIG.COLORS_NOTE[0], font: CONFIG.FONTS[0] 
-        }});
+            w, h, text: '', 
+            color: saved?.color || CONFIG.COLORS_NOTE[0], 
+            font: saved?.font || CONFIG.FONTS[0],
+            fontSize: saved?.fontSize || 16,
+            fontWeight: saved?.fontWeight || 'normal',
+            fontStyle: saved?.fontStyle || 'normal',
+            textColor: saved?.textColor || '#0f172a'
+        };
+        dispatch({ type: 'ADD_NODE', payload: noteData });
     }, [viewport, dispatch]);
 
     const addText = useCallback(() => {
