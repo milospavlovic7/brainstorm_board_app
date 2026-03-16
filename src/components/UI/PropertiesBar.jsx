@@ -1,7 +1,7 @@
 import React, { useContext, useMemo, useState, useCallback } from 'react';
 import { BoardContext, BoardDispatch } from '../../store/BoardContext';
-import { CONFIG, StorageService } from '../../services/StorageService';
-import { Trash2, Save } from 'lucide-react';
+import { CONFIG, StorageService, generateId } from '../../services/StorageService';
+import { Trash2, Save, Copy } from 'lucide-react';
 
 export function PropertiesBar() {
     const { mode, selectionIds, nodes, paths, brush } = useContext(BoardContext);
@@ -31,6 +31,12 @@ export function PropertiesBar() {
             else if (selectedPath) dispatch({ type: 'DELETE_PATH', id: selectionId });
         }
     };
+
+    const handleDuplicate = useCallback(() => {
+        if (!selectedNode) return;
+        const OFFSET = 24;
+        dispatch({ type: 'ADD_NODE', payload: { ...selectedNode, id: generateId(), x: selectedNode.x + OFFSET, y: selectedNode.y + OFFSET } });
+    }, [selectedNode, dispatch]);
 
     const handleSaveDefaults = useCallback(() => {
         if (!selectedNode || selectedNode.type !== 'note') return;
@@ -127,12 +133,16 @@ export function PropertiesBar() {
                             <Save size={16} />
                         )}
                     </button>
+                    <button className="btn-icon" title="Duplicate Note" onClick={handleDuplicate}><Copy size={16} /></button>
                     <button className="btn-icon is-danger" title="Delete Note" onClick={handleDelete}><Trash2 size={16} /></button>
                 </>
             );
         } else if (selectedNode && selectedNode.type === 'image') {
             innerContent = (
-                <button className="btn-icon is-danger" title="Delete Image" onClick={handleDelete}><Trash2 size={18} /> Delete Image</button>
+                <>
+                    <button className="btn-icon" title="Duplicate Image" onClick={handleDuplicate}><Copy size={16} /></button>
+                    <button className="btn-icon is-danger" title="Delete Image" onClick={handleDelete}><Trash2 size={18} /> Delete Image</button>
+                </>
             );
         } else if (selectedNode && selectedNode.type === 'text') {
             innerContent = (
@@ -161,6 +171,7 @@ export function PropertiesBar() {
                         {[16, 24, 32, 48, 64, 96, 128].map(s => <option key={s} value={s}>{s}px</option>)}
                     </select>
                     <div className="divider-v" />
+                    <button className="btn-icon" title="Duplicate Text" onClick={handleDuplicate}><Copy size={16} /></button>
                     <button className="btn-icon is-danger" title="Delete Text" onClick={handleDelete}><Trash2 size={18} /></button>
                 </>
             );
