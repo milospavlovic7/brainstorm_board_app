@@ -193,8 +193,8 @@ export function BoardProvider({ children }) {
     // Keyboard shortcuts for Undo/Redo and Delete
     useEffect(() => {
         const handleKeyDown = (e) => {
-            // Check if user is typing in an input
-            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') {
+            // Check if user is typing in an input or a contentEditable div
+            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT' || e.target.isContentEditable) {
                 return;
             }
             if ((e.ctrlKey || e.metaKey) && e.key === 'z') {

@@ -76,7 +76,7 @@ export function Board() {
             if (e.target.tagName && e.target.tagName.toLowerCase() === 'textarea') return;
             e.preventDefault();
             const vp = viewportRef.current;
-            if (e.ctrlKey || e.metaKey) {
+            if (e.shiftKey) {
                 const zoomDelta = e.deltaY > 0 ? -0.1 : 0.1;
                 const newZoom = Math.min(Math.max(0.1, vp.zoom + zoomDelta), 5);
                 const pointX = (e.clientX - vp.x) / vp.zoom;

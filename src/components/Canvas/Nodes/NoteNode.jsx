@@ -1,4 +1,4 @@
-import React, { memo, useContext, useCallback, useState } from 'react';
+import React, { memo, useContext, useCallback, useState, useRef, useEffect } from 'react';
 import { BoardDispatch } from '../../../store/BoardContext';
 import { usePhysicalDragRef } from '../usePhysicalDragRef';
 import { CONFIG } from '../../../services/StorageService';
@@ -6,6 +6,13 @@ import { CONFIG } from '../../../services/StorageService';
 export const NoteNode = memo(({ data, isSelected, isMultiSelected, mode, zoom, onStartSelectionDrag }) => {
     const dispatch = useContext(BoardDispatch);
     const [showTitle, setShowTitle] = useState(false);
+    const inputRef = useRef(null);
+
+    useEffect(() => {
+        if (inputRef.current && inputRef.current.innerHTML !== (data.text || '')) {
+            inputRef.current.innerHTML = data.text || '';
+        }
+    }, [data.text]);
 
     const commitTransform = useCallback((id, payload) => {
         dispatch({ type: 'UPDATE_NODE', id, payload });
@@ -16,7 +23,7 @@ export const NoteNode = memo(({ data, isSelected, isMultiSelected, mode, zoom, o
     });
 
     const updateText = useCallback((e) => {
-        dispatch({ type: 'UPDATE_NODE', id: data.id, payload: { text: e.target.value } });
+        dispatch({ type: 'UPDATE_NODE', id: data.id, payload: { text: e.currentTarget.innerHTML } });
     }, [dispatch, data.id]);
 
     const handlePaste = useCallback((e) => {
@@ -76,10 +83,30 @@ export const NoteNode = memo(({ data, isSelected, isMultiSelected, mode, zoom, o
             >
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M8 9h8M8 15h8" /></svg>
             </div>
-            <textarea
-                className="note-input"
-                style={{ fontFamily: data.font, fontSize: `${data.fontSize || 16}px`, fontWeight: data.fontWeight || 'normal', fontStyle: data.fontStyle || 'normal', color: data.textColor || '#0f172a' }}
-                value={data.text} onChange={updateText} onPaste={handlePaste}
+            <div
+                ref={inputRef}
+                className="note-input content-editable"
+                contentEditable
+                suppressContentEditableWarning
+                style={{ 
+                    fontFamily: data.font, fontSize: `${data.fontSize || 16}px`, 
+                    fontWeight: data.fontWeight || 'normal', fontStyle: data.fontStyle || 'normal', 
+                    color: data.textColor || '#0f172a',
+                    overflowY: 'auto', whiteSpace: 'pre-wrap', wordBreak: 'break-word', outline: 'none', flex: 1
+                }}
+                onInput={updateText} onBlur={updateText} onPaste={handlePaste}
+                onKeyDown={(e) => {
+                    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'b') {
+                        e.preventDefault();
+                        document.execCommand('bold', false, null);
+                        updateText({ currentTarget: inputRef.current });
+                    }
+                    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'i') {
+                        e.preventDefault();
+                        document.execCommand('italic', false, null);
+                        updateText({ currentTarget: inputRef.current });
+                    }
+                }}
                 onPointerDown={(e) => { selectElement(e); e.stopPropagation(); }}
                 onWheel={(e) => e.stopPropagation()}
             />

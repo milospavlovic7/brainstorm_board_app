@@ -93,24 +93,24 @@ export function PropertiesBar() {
                     >
                         {CONFIG.FONTS.map(f => <option key={f} value={f}>{f}</option>)}
                     </select>
-                    <select 
-                        className="select-ui" title="Font Size"
+                    <input 
+                        type="number"
+                        className="input-ui" title="Font Size (px)"
                         value={selectedNode.fontSize || 16}
-                        onChange={(e) => dispatch({ type: 'UPDATE_NODE', id: selectionId, payload: { fontSize: parseInt(e.target.value) }})}
+                        onChange={(e) => dispatch({ type: 'UPDATE_NODE', id: selectionId, payload: { fontSize: parseInt(e.target.value) || 16 }})}
                         style={{ marginLeft: 4 }}
-                    >
-                        {[12, 14, 16, 18, 20, 24, 32, 48].map(s => <option key={s} value={s}>{s}px</option>)}
-                    </select>
+                        min="8" max="500"
+                    />
                     <div className="divider-v" />
                     <button 
-                        className={`btn-icon ${selectedNode.fontWeight === 'bold' ? 'is-active' : ''}`} title="Bold"
-                        onClick={() => dispatch({ type: 'UPDATE_NODE', id: selectionId, payload: { fontWeight: selectedNode.fontWeight === 'bold' ? 'normal' : 'bold' }})}
+                        className="btn-icon" title="Bold Selected Text"
+                        onPointerDown={(e) => { e.preventDefault(); document.execCommand('bold', false, null); }}
                     >
                         <strong style={{ fontFamily: 'serif', fontSize: 16 }}>B</strong>
                     </button>
                     <button 
-                        className={`btn-icon ${selectedNode.fontStyle === 'italic' ? 'is-active' : ''}`} title="Italic"
-                        onClick={() => dispatch({ type: 'UPDATE_NODE', id: selectionId, payload: { fontStyle: selectedNode.fontStyle === 'italic' ? 'normal' : 'italic' }})}
+                        className="btn-icon" title="Italicize Selected Text"
+                        onPointerDown={(e) => { e.preventDefault(); document.execCommand('italic', false, null); }}
                     >
                         <em style={{ fontFamily: 'serif', fontSize: 16 }}>I</em>
                     </button>
@@ -163,13 +163,14 @@ export function PropertiesBar() {
                     >
                         {CONFIG.FONTS.map(f => <option key={f} value={f}>{f}</option>)}
                     </select>
-                    <select 
-                        className="select-ui" title="Font Size"
+                    <input 
+                        type="number"
+                        className="input-ui" title="Font Size (px)"
                         value={selectedNode.fontSize || 32}
-                        onChange={(e) => dispatch({ type: 'UPDATE_NODE', id: selectionId, payload: { fontSize: parseInt(e.target.value) }})}
-                    >
-                        {[16, 24, 32, 48, 64, 96, 128].map(s => <option key={s} value={s}>{s}px</option>)}
-                    </select>
+                        onChange={(e) => dispatch({ type: 'UPDATE_NODE', id: selectionId, payload: { fontSize: parseInt(e.target.value) || 32 }})}
+                        style={{ marginLeft: 4 }}
+                        min="8" max="500"
+                    />
                     <div className="divider-v" />
                     <button className="btn-icon" title="Duplicate Text" onClick={handleDuplicate}><Copy size={16} /></button>
                     <button className="btn-icon is-danger" title="Delete Text" onClick={handleDelete}><Trash2 size={18} /></button>

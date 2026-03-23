@@ -238,11 +238,13 @@ body {
     letter-spacing: 0.05em;
 }
 
-.select-ui {
+.select-ui, .input-ui {
     padding: 5px 8px; border-radius: var(--radius-sm);
     border: 1px solid var(--color-border); font-family: inherit; font-weight: 500;
-    background: transparent; cursor: pointer; outline: none; font-size: 12px; color: var(--color-text);
+    background: transparent; outline: none; font-size: 12px; color: var(--color-text);
 }
+.select-ui { cursor: pointer; }
+.input-ui { width: 54px; text-align: center; }
 
 .brush-slider-group { display: flex; align-items: center; gap: 8px; }
 .slider-label { font-size: 13px; font-weight: 600; min-width: 36px; }
