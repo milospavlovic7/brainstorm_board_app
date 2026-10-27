@@ -3,7 +3,7 @@ import { BoardContext, BoardDispatch } from '../../store/BoardContext';
 import { CONFIG, generateId, StorageService } from '../../services/StorageService';
 import { 
     MousePointer2, Edit2, Eraser, StickyNote, Type, Image as ImageIcon,
-    Undo2, Redo2, Download, Upload, Moon, Sun, Grid3x3
+    Undo2, Redo2, Download, Upload, Moon, Sun, Grid3x3, FileText
 } from 'lucide-react';
 
 export function MainMenu() {
@@ -80,6 +80,31 @@ export function MainMenu() {
         e.target.value = null;
     };
 
+    const handleExportTxt = useCallback(() => {
+        const notes = state.nodes.filter(n => n.type === 'note');
+        notes.sort((a, b) => a.id.localeCompare(b.id));
+
+        let txtContent = "";
+        notes.forEach(note => {
+            txtContent += "---------------------------------------\n";
+            txtContent += (note.title || "Bez naslova") + "\n\n";
+            const tempDiv = document.createElement("div");
+            tempDiv.innerHTML = note.text || "";
+            txtContent += (tempDiv.innerText || tempDiv.textContent) + "\n";
+            txtContent += "----------------------------------------\n\n";
+        });
+
+        const blob = new Blob([txtContent], { type: 'text/plain;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "beleske.txt";
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    }, [state.nodes]);
+
     return (
         <div className="glass-panel main-menu ui-layer-ignore">
             <div className="menu-group">
@@ -120,6 +145,7 @@ export function MainMenu() {
             <div className="divider-h" />
 
             <div className="menu-group">
+                <button title="Eksportuj beleške u TXT" className="btn-icon" onClick={handleExportTxt}><FileText size={20} /></button>
                 <button title="Save Project to File" className="btn-icon" onClick={handleExport}><Download size={20} /></button>
                 <label title="Load Project from File" className="btn-icon">
                     <Upload size={20} />

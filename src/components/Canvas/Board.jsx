@@ -11,6 +11,7 @@ export function Board() {
     const dispatch = useContext(BoardDispatch);
 
     const boardRef = useRef();
+    const viewportLayerRef = useRef(); // Added for direct transform manipulation
     const interactState = useRef({
         isPanning: false, isDrawing: false, isBoxSelecting: false, isGroupMoving: false,
         lastX: 0, lastY: 0,
@@ -72,22 +73,53 @@ export function Board() {
     useEffect(() => {
         const el = boardRef.current;
         if (!el) return;
+        
+        let wheelTimeout = null;
+        
         const onWheel = (e) => {
             if (e.target.tagName && e.target.tagName.toLowerCase() === 'textarea') return;
             e.preventDefault();
             const vp = viewportRef.current;
-            if (e.shiftKey) {
+            const s = interactState.current;
+            
+            // Allow ctrlKey for pinch-zoom and shiftKey for explicit zoom
+            if (e.shiftKey || e.ctrlKey) {
                 const zoomDelta = e.deltaY > 0 ? -0.1 : 0.1;
                 const newZoom = Math.min(Math.max(0.1, vp.zoom + zoomDelta), 5);
                 const pointX = (e.clientX - vp.x) / vp.zoom;
                 const pointY = (e.clientY - vp.y) / vp.zoom;
                 dispatch({ type: 'SET_VIEWPORT', payload: { zoom: newZoom, x: e.clientX - pointX * newZoom, y: e.clientY - pointY * newZoom } });
             } else {
-                dispatch({ type: 'SET_VIEWPORT', payload: { ...vp, x: vp.x - e.deltaX, y: vp.y - e.deltaY } });
+                s.accDx -= e.deltaX;
+                s.accDy -= e.deltaY;
+                
+                const newX = vp.x + s.accDx;
+                const newY = vp.y + s.accDy;
+                
+                if (boardRef.current) {
+                    boardRef.current.style.backgroundPosition = `${newX}px ${newY}px`;
+                }
+                if (viewportLayerRef.current) {
+                    viewportLayerRef.current.style.transform = `translate(${newX}px, ${newY}px) scale(${vp.zoom})`;
+                }
+                
+                if (wheelTimeout) clearTimeout(wheelTimeout);
+                wheelTimeout = setTimeout(() => {
+                    const latestVp = viewportRef.current;
+                    const latestS = interactState.current;
+                    if (latestS.accDx !== 0 || latestS.accDy !== 0) {
+                        dispatch({ type: 'SET_VIEWPORT', payload: { ...latestVp, x: latestVp.x + latestS.accDx, y: latestVp.y + latestS.accDy } });
+                        latestS.accDx = 0;
+                        latestS.accDy = 0;
+                    }
+                }, 150);
             }
         };
         el.addEventListener('wheel', onWheel, { passive: false });
-        return () => el.removeEventListener('wheel', onWheel);
+        return () => {
+            el.removeEventListener('wheel', onWheel);
+            if (wheelTimeout) clearTimeout(wheelTimeout);
+        };
     }, [dispatch]);
 
     // ── resolvePoint: screen → board coords ───────────────────────────────────
@@ -179,7 +211,7 @@ export function Board() {
         }
 
         if (e.button === 1 || (e.button === 0 && mode === CONFIG.MODES.SELECT && (e.target === boardRef.current || e.target.closest('svg')))) {
-            interactState.current = { ...interactState.current, isPanning: true, isDrawing: false, isBoxSelecting: false, isGroupMoving: false, lastX: e.clientX, lastY: e.clientY };
+            interactState.current = { ...interactState.current, isPanning: true, isDrawing: false, isBoxSelecting: false, isGroupMoving: false, lastX: e.clientX, lastY: e.clientY, accDx: 0, accDy: 0 };
             e.target.setPointerCapture(e.pointerId);
         } else if (e.button === 0 && mode === CONFIG.MODES.DRAW) {
             interactState.current = { ...interactState.current, isPanning: false, isDrawing: true, isBoxSelecting: false, isGroupMoving: false };
@@ -196,9 +228,20 @@ export function Board() {
         const vp = viewportRef.current;
 
         if (s.isPanning) {
-            dispatch({ type: 'SET_VIEWPORT', payload: { ...vp, x: vp.x + (e.clientX - s.lastX), y: vp.y + (e.clientY - s.lastY) } });
+            s.accDx += (e.clientX - s.lastX);
+            s.accDy += (e.clientY - s.lastY);
             s.lastX = e.clientX;
             s.lastY = e.clientY;
+
+            const newX = vp.x + s.accDx;
+            const newY = vp.y + s.accDy;
+
+            if (boardRef.current) {
+                boardRef.current.style.backgroundPosition = `${newX}px ${newY}px`;
+            }
+            if (viewportLayerRef.current) {
+                viewportLayerRef.current.style.transform = `translate(${newX}px, ${newY}px) scale(${vp.zoom})`;
+            }
         } else if (s.isDrawing) {
             setLocalActivePath(prev => prev ? { ...prev, points: [...prev.points, [e.clientX, e.clientY]] } : null);
         } else if (s.isBoxSelecting) {
@@ -230,6 +273,13 @@ export function Board() {
         if (s.isPanning) {
             s.isPanning = false;
             try { e.target.releasePointerCapture(e.pointerId); } catch (_) {}
+            
+            if (s.accDx !== 0 || s.accDy !== 0) {
+                const vp = viewportRef.current;
+                dispatch({ type: 'SET_VIEWPORT', payload: { ...vp, x: vp.x + s.accDx, y: vp.y + s.accDy } });
+                s.accDx = 0;
+                s.accDy = 0;
+            }
 
         } else if (s.isDrawing) {
             s.isDrawing = false;
@@ -302,6 +352,7 @@ export function Board() {
             onPointerCancel={onPointerUp}
         >
             <div
+                ref={viewportLayerRef}
                 className="viewport-layer"
                 style={{ transform: `translate(${viewport.x}px, ${viewport.y}px) scale(${viewport.zoom})` }}
             >
