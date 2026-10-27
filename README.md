@@ -4,6 +4,8 @@ An intuitive, lightweight infinite-canvas whiteboard and brainstorming applicati
 
 ### 🌐 Try Online: [https://milospavlovic7.github.io/brainstorm_board_app/](https://milospavlovic7.github.io/brainstorm_board_app/)
 
+![Brainstorm Board Preview](preview.png)
+
 ---
 
 ## ✨ Key Features
